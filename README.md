@@ -7,6 +7,8 @@
 Traditional relational databases (SQL) struggle to detect deep, multi-hop financial anomalies in real-time. This project is a custom-built Graph Database engine designed to simulate and detect two distinct types of financial risk:
 1. **Adversarial Fraud:** Anti-Money Laundering (AML) syndicates executing closed-loop "smurfing" transactions.
 2. **Systemic IT Failures:** Real-time payment gateway glitches resulting in duplicate charges. 
+**Unified Economy Visualization:**
+<img width="900" height="465" alt="visualisation" src="https://github.com/user-attachments/assets/19787811-8a28-4513-a3e4-e2f7183c874a" />
 
 ## 🌍 Real-World Application: The FNB & Takealot Glitch
 This model was expanded to simulate a real-world FinTech crisis. On March 4, 2026, FNB customers experienced a technical processing error where virtual card payments on Takealot were duplicated, resulting in customers being charged two or three times for a single purchase. FNB confirmed the issue was specifically limited to their virtual cards. 
@@ -26,9 +28,9 @@ WHERE t1.amount = t2.amount
   AND t1.card_type = "Virtual"
   AND abs(t1.timestamp - t2.timestamp) < 300000 
 RETURN u.id AS Victim_Account, m.name AS Merchant, t1.amount AS Amount_Charged, count(t2) AS Total_Duplicates
-<img width="900" height="465" alt="visualisation (3)" src="https://github.com/user-attachments/assets/8277180e-0148-4d6f-a5d8-edfb356d1a85" />
-<img width="827" height="498" alt="visualisation (4)" src="https://github.com/user-attachments/assets/671f0711-801f-4119-b9c5-af1698827f13" />
-<img width="900" height="465" alt="visualisation" src="https://github.com/user-attachments/assets/19787811-8a28-4513-a3e4-e2f7183c874a" />
+
+**Graph Analysis:**
+<img width="900" height="465" alt="visualisation (3)" src="https://github.com/user-attachments/assets/ff9d996e-a9e5-42f7-8562-0c3c2115a3f2" />
 
 2. AML Syndicate Detection (Smurfing Rings)
 Money launderers often use "smurfs" to move money in a circular topology to bypass the R25,000 reporting threshold. This algorithm uses Variable-Length Pathing to dynamically detect any closed-loop money transfer ring between 3 and 10 hops long.
@@ -48,6 +50,9 @@ Update the URI and PASSWORD credentials in financial_risk_engine.py.
 Run the data generator to populate the graph: python financial_risk_engine.py
 
 Open your Neo4j browser and execute the Cypher queries above to catch the anomalies.
+
+**Graph Analytics:**
+<img width="827" height="498" alt="visualisation (4)" src="https://github.com/user-attachments/assets/671f0711-801f-4119-b9c5-af1698827f13" />
 
 🤖 Acknowledgments
 AI/LLM Assistance: Large Language Models (LLMs) were utilized during the development phase to assist in the syntactic formatting and optimization of the advanced Cypher graph queries, ensuring high-performance traversal logic and accurate algorithmic execution.
