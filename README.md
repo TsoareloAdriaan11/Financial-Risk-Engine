@@ -29,8 +29,7 @@ WHERE t1.amount = t2.amount
   AND abs(t1.timestamp - t2.timestamp) < 300000 
 RETURN u.id AS Victim_Account, m.name AS Merchant, t1.amount AS Amount_Charged, count(t2) AS Total_Duplicates
 
-**Graph Analysis:**
-<img width="900" height="465" alt="visualisation (3)" src="https://github.com/user-attachments/assets/ff9d996e-a9e5-42f7-8562-0c3c2115a3f2" />
+<img width="900" height="465" alt="visualisation (3)" src="https://github.com/user-attachments/assets/8277180e-0148-4d6f-a5d8-edfb356d1a85" />
 
 2. AML Syndicate Detection (Smurfing Rings)
 Money launderers often use "smurfs" to move money in a circular topology to bypass the R25,000 reporting threshold. This algorithm uses Variable-Length Pathing to dynamically detect any closed-loop money transfer ring between 3 and 10 hops long.
@@ -51,7 +50,6 @@ Run the data generator to populate the graph: python financial_risk_engine.py
 
 Open your Neo4j browser and execute the Cypher queries above to catch the anomalies.
 
-**Graph Analytics:**
 <img width="827" height="498" alt="visualisation (4)" src="https://github.com/user-attachments/assets/671f0711-801f-4119-b9c5-af1698827f13" />
 
 🤖 Acknowledgments
