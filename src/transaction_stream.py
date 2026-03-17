@@ -41,7 +41,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("risk_engine.stream")
 
-fake = Faker("en_ZA")
+fake = Faker()
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Configuration
