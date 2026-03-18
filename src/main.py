@@ -18,7 +18,8 @@ Triggered every 6 hours by GitHub Actions (risk_engine.yml).
 The live stream (transaction_stream.yml) runs in parallel, continuously
 writing new transactions — this script scans what it finds and reports.
 """
-
+from dotenv import load_dotenv
+load_dotenv()
 import sys
 import logging
 
