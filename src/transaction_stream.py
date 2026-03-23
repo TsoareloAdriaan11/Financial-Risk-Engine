@@ -307,9 +307,21 @@ def run_stream():
 
     stats      = StreamStats()
     start_time = time.time()
-
-    with Neo4jConnection() as conn:
+  
+  with Neo4jConnection() as conn:
         ensure_schema(conn)
+
+        # Auto-purge old transactions if graph exceeds 150k nodes
+        count = conn.query("MATCH (n) RETURN count(n) AS total")[0]["total"]
+        if count > 150_000:
+            logger.info("🧹 Node limit approaching (%d nodes) — purging old transactions...", count)
+            conn.query("""
+                MATCH (t:Transaction)
+                WHERE t.timestamp < (timestamp() / 1000) - 86400
+                DETACH DELETE t
+            """)
+            logger.info("✅ Old transactions purged.")
+
         logger.info("✅ Connected to Neo4j AuraDB. Stream is live.\n")
 
         while _running:
@@ -318,30 +330,24 @@ def run_stream():
             if elapsed >= MAX_RUNTIME_SECONDS:
                 logger.info("⏱️  Max runtime reached (%.0fs). Shutting down cleanly.", elapsed)
                 break
-
             cycle_start = time.time()
             stats.cycles += 1
             logger.info("─── Cycle #%d | %s ───", stats.cycles, _now())
-
             # ── Normal transactions ──────────────────────────────────────
             n = emit_normal_transactions(conn, NORMAL_TXN_PER_CYCLE)
             stats.normal_txns += n
             logger.info("  ✅ %d normal transaction(s) written", n)
-
             # ── AML anomaly (probabilistic) ──────────────────────────────
             if random.random() < AML_INJECT_PROBABILITY:
                 emit_aml_burst(conn)
                 stats.aml_bursts += 1
-
             # ── Glitch anomaly (probabilistic) ───────────────────────────
             if random.random() < GLITCH_INJECT_PROBABILITY:
                 emit_glitch_burst(conn)
                 stats.glitch_bursts += 1
-
             # ── Log summary every 10 cycles ──────────────────────────────
             if stats.cycles % 10 == 0:
                 stats.log()
-
             # ── Sleep until next cycle ────────────────────────────────────
             cycle_duration = time.time() - cycle_start
             sleep_for      = max(0, STREAM_INTERVAL_SECONDS - cycle_duration)
@@ -358,3 +364,9 @@ def _now() -> str:
 
 if __name__ == "__main__":
     run_stream()
+
+
+
+
+
+     
