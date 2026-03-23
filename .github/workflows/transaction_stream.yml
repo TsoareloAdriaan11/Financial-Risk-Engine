@@ -54,7 +54,7 @@ jobs:
           NEO4J_USERNAME:           ${{ secrets.NEO4J_USERNAME }}
           NEO4J_PASSWORD:           ${{ secrets.NEO4J_PASSWORD }}
           STREAM_INTERVAL_SECONDS:  "15"
-          NORMAL_TXN_PER_CYCLE:     "5"
+          NORMAL_TXN_PER_CYCLE:     "2"
           AML_INJECT_PROBABILITY:   "0.15"
           GLITCH_INJECT_PROBABILITY: "0.15"
           MAX_RUNTIME_SECONDS:      "21000"   # 5h 50m — exits before 6h Actions limit
