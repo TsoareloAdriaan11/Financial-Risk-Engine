@@ -94,19 +94,31 @@ signal.signal(signal.SIGINT,  _handle_sigterm)
 
 def emit_normal_transactions(conn: Neo4jConnection, count: int) -> int:
     """
-    Emit a batch of realistic everyday ZA payment transactions.
-    Customers and accounts are created on-the-fly to keep the graph growing.
+    Emit normal transactions by reusing existing customers/accounts
+    where possible — only creates new ones if the pool is small.
     """
     emitted = 0
+
+    # Fetch a pool of existing accounts to reuse
+    existing = conn.query(
+        "MATCH (a:Account) RETURN a.account_id AS aid LIMIT 50"
+    )
+    existing_ids = [r["aid"] for r in existing]
+
     for _ in range(count):
-        c = _create_customer(conn)
-        a = _create_account(conn, c["customer_id"],
-                            account_type=random.choice(["cheque", "savings", "virtual"]))
+        # Reuse an existing account 80% of the time
+        if existing_ids and random.random() < 0.80:
+            acc_id = random.choice(existing_ids)
+        else:
+            c      = _create_customer(conn)
+            a      = _create_account(conn, c["customer_id"],
+                        account_type=random.choice(["cheque", "savings", "virtual"]))
+            acc_id = a["account_id"]
+            existing_ids.append(acc_id)
 
         merchant_name = random.choice(ZA_MERCHANTS)
-        m = _create_merchant(conn, name=merchant_name)
-
-        amount  = round(random.uniform(20, 8_000), 2)
+        m      = _create_merchant(conn, name=merchant_name)
+        amount = round(random.uniform(20, 8_000), 2)
         channel = random.choice(["online", "pos", "mobile", "virtual_card", "tap_to_pay"])
 
         conn.query(
@@ -114,18 +126,18 @@ def emit_normal_transactions(conn: Neo4jConnection, count: int) -> int:
             MATCH (a:Account {account_id: $acc_id})
             MATCH (m:Merchant {merchant_id: $merch_id})
             CREATE (t:Transaction {txn_id: $txn_id})
-            SET t.amount    = $amount,
-                t.currency  = 'ZAR',
-                t.timestamp = $ts,
-                t.txn_type  = 'purchase',
-                t.status    = 'completed',
-                t.channel   = $channel,
-                t.aml_ring  = null,
+            SET t.amount      = $amount,
+                t.currency    = 'ZAR',
+                t.timestamp   = $ts,
+                t.txn_type    = 'purchase',
+                t.status      = 'completed',
+                t.channel     = $channel,
+                t.aml_ring    = null,
                 t.glitch_flag = false
             CREATE (a)-[:SENT]->(t)-[:TO]->(m)
             """,
             {
-                "acc_id":   a["account_id"],
+                "acc_id":   acc_id,
                 "merch_id": m["merchant_id"],
                 "txn_id":   f"TXN-NORM-{fake.uuid4()[:10].upper()}",
                 "amount":   amount,
