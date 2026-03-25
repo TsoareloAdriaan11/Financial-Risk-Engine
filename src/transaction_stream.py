@@ -355,7 +355,8 @@ def run_stream():
 
     stats.log()
     logger.info("🏁 Transaction stream stopped.")
-  def _now() -> str:
+
+def _now() -> str:
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
