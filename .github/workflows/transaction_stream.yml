@@ -55,8 +55,8 @@ jobs:
           NEO4J_PASSWORD:           ${{ secrets.NEO4J_PASSWORD }}
           STREAM_INTERVAL_SECONDS:  "15"
           NORMAL_TXN_PER_CYCLE:     "2"
-          AML_INJECT_PROBABILITY:   "0.15"
-          GLITCH_INJECT_PROBABILITY: "0.15"
+          AML_INJECT_PROBABILITY:   "1.0"
+          GLITCH_INJECT_PROBABILITY: "1.0"
           MAX_RUNTIME_SECONDS:      "21000"   # 5h 50m — exits before 6h Actions limit
         run: |
           cd src
