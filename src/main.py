@@ -65,9 +65,7 @@ def main():
             logger.info("✅ No anomalies detected — sending clean-run notification.")
             alert.send_clean_run()
         else:
-            for finding in aml_findings + glitch_findings:
-                alert.send_finding(finding)
-            alert.send_run_summary(aml_findings, glitch_findings, impact_summary)
+              alert.send_run_summary(aml_findings, glitch_findings, impact_summary)
 
         # ── Summary ────────────────────────────────────────────────────────
         logger.info("\n" + "=" * 70)
