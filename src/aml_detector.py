@@ -120,7 +120,7 @@ class AMLDetector:
         logger.info("🏁 AML scan complete. %d ring(s) found.", len(findings))
         return findings
 
-    def detect_structuring(self) -> list[dict]:
+   def detect_structuring(self) -> list[dict]:
         """
         Detect transaction structuring: many sub-threshold transfers in 24h.
         """
