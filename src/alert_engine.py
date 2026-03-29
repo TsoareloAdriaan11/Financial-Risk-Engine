@@ -219,9 +219,9 @@ class AlertEngine:
         for f in aml:
             sev_color = SEVERITY_COLORS.get(f["severity"], "#999")
             aml_rows += (
-                f"<tr><td style='padding:6px 10px;border-bottom:1px solid #eee'>{f['customer_name']}</td>"
+                f"<td style='padding:6px 10px;border-bottom:1px solid #eee'>{f.get('customer_name', f.get('account_id', 'Unknown'))}</td>"
                 f"<td style='padding:6px 10px;border-bottom:1px solid #eee'>{f.get('hops', len(f.get('txn_ids', [])))} accounts</td>"
-                f"<td style='padding:6px 10px;border-bottom:1px solid #eee'>R{f['total_laundered_zar']:,.2f}</td>"
+                f"<td style='padding:6px 10px;border-bottom:1px solid #eee'>R{f.get('total_laundered_zar', f.get('total_structured_amount', 0)):,.2f}</td>"
                 f"<td style='padding:6px 10px;border-bottom:1px solid #eee'>"
                 f"<span style='color:{sev_color}'>{f['severity']}</span></td></tr>"
             )
