@@ -72,6 +72,7 @@ def main():
                 total_aml=len(aml_findings),
                 total_glitch=len(glitch_findings),
                 run_id=run_id,
+                report_path=report_path
             )
 
             # Send summary with top 50 of each + report download link
