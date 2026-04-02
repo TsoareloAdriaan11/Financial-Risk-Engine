@@ -226,8 +226,8 @@ class AlertEngine:
         total_glitch_amount = sum(f.get("overcharged_zar", 0) for f in glitch)
 
         # Build report download link
-        repo = "TsoareloAdriaan11/Financial-Risk-Engine"
-        report_link = f"https://github.com/{repo}/actions/runs/{run_id}/artifacts" if run_id else "#"
+        repo = os.environ.get("GITHUB_REPOSITORY", "TsoareloAdriaan11/Financial-Risk-Engine")
+        report_link = f"https://github.com/{repo}/actions/runs/{run_id}" if run_id else "#"
 
         aml_rows = ""
         for f in aml:
