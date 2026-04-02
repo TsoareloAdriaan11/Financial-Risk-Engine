@@ -13,7 +13,6 @@ def _now() -> str:
 
 
 def _neo4j_link(cypher: str) -> str:
-    def _neo4j_link(cypher: str) -> str:
     """
     Builds a Neo4j Browser deep link that pre-fills the query editor.
     User clicks it, Neo4j Browser opens with the query ready to run.
