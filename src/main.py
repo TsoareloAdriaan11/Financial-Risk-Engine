@@ -44,27 +44,23 @@ def main():
         glitch_findings = glitch_detector.run_all()
         impact_summary  = glitch_detector.get_impact_summary()
 
-        # ── 3. Generate full HTML report ───────────────────────────────────
+        # ── 3. Generate HTML Report ────────────────────────────────────────
         logger.info("\nStep 3/4: Generating full anomaly report...")
+        report_path = ""
         total_findings = len(aml_findings) + len(glitch_findings)
-
-        report_path = None
-        report_name = None
         if total_findings > 0:
-            report_path, report_name = generate_report(
-                aml_findings, glitch_findings, impact_summary, run_id
-            )
+            report_path = generate_report(aml_findings, glitch_findings, impact_summary, run_id)
             logger.info("Report saved: %s", report_path)
 
         # ── 4. Alerting ────────────────────────────────────────────────────
         logger.info("\nStep 4/4: Dispatching alerts...")
 
         if total_findings == 0:
-            logger.info("No anomalies detected — sending clean-run notification.")
+            logger.info("✅ No anomalies detected — sending clean-run notification.")
             alert.send_clean_run()
         else:
             logger.info("📦 Packaging findings into master digest report...")
-            # Send ONLY the master summary digest (stops 1-by-1 spam)
+            # Send ONLY the master summary digest AND attach the HTML file
             alert.send_run_summary(
                 aml_findings[:50],
                 glitch_findings[:50],
@@ -73,16 +69,6 @@ def main():
                 total_glitch=len(glitch_findings),
                 run_id=run_id,
                 report_path=report_path
-            )
-
-            # Send summary with top 50 of each + report download link
-            alert.send_run_summary(
-                aml_findings[:50],
-                glitch_findings[:50],
-                impact_summary,
-                total_aml=len(aml_findings),
-                total_glitch=len(glitch_findings),
-                run_id=run_id,
             )
 
         # ── Summary log ────────────────────────────────────────────────────
@@ -99,9 +85,8 @@ def main():
             sum(f.get("overcharged_zar", 0) for f in glitch_findings),
         )
         if report_path:
-            logger.info("   Report file        : %s", report_name)
+            logger.info("   Report file        : %s", report_path)
         logger.info("=" * 70)
-
 
 if __name__ == "__main__":
     main()
