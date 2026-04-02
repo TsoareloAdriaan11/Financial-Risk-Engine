@@ -51,6 +51,7 @@ class AlertEngine:
                          impact_summary: dict, total_aml: int = 0,
                          total_glitch: int = 0, run_id: str = "", report_path: str = None):
         """Send an end-of-run digest with top 50 of each + attached full HTML report."""
+        
         total_aml    = total_aml    or len(aml_findings)
         total_glitch = total_glitch or len(glitch_findings)
         total        = total_aml + total_glitch
@@ -68,7 +69,7 @@ class AlertEngine:
         self._send(subject, body)
 
     # ─────────────────────────────────────────────────────────────────────────
-    # SMTP sender (Upgraded to handle direct file attachments)
+    # SMTP sender (Upgraded to handle direct HTML file attachments)
     # ─────────────────────────────────────────────────────────────────────────
 
     def _send(self, subject: str, html_body: str, attachment_path: str = None):
@@ -111,18 +112,60 @@ class AlertEngine:
 
     @staticmethod
     def _aml_html_body(f: dict) -> str:
-        # (Kept identical to your previous version)
-        return ""
+        color  = SEVERITY_COLORS.get(f["severity"], "#999")
+        amounts = ", ".join([f"R{a:,.2f}" for a in f.get("transaction_amounts", [])])
+        return f"""
+        <html><body style="font-family:Arial,sans-serif;background:#f4f4f4;padding:20px">
+        <div style="max-width:620px;background:#fff;border-radius:8px;overflow:hidden;margin:auto">
+          <div style="background:{color};padding:16px 20px">
+            <h2 style="color:#fff;margin:0">🚨 AML ALERT: Smurfing Ring Detected</h2>
+            <span style="color:#ffffffcc;font-size:13px">{_now()} — Financial Risk Engine</span>
+          </div>
+          <div style="padding:20px">
+            {_row("Severity",          f"<strong style='color:{color}'>{f['severity']}</strong>")}
+            {_row("Ring Account",       f['ring_account'])}
+            {_row("Customer ID",        f['customer_id'])}
+            {_row("Customer Name",      f['customer_name'])}
+            {_row("Hops in Ring",       str(f['hops']))}
+            {_row("Transaction Amounts", amounts)}
+            {_row("Total Laundered",    f"<strong>R{f['total_laundered_zar']:,.2f}</strong>")}
+            {_row("Transaction IDs",    "<br>".join(f['txn_ids']))}
+          </div>
+        </div></body></html>
+        """
 
     @staticmethod
     def _structuring_html_body(f: dict) -> str:
-        # (Kept identical to your previous version)
-        return ""
+        color = SEVERITY_COLORS.get(f["severity"], "#999")
+        return f"""
+        <html><body style="font-family:Arial,sans-serif;background:#f4f4f4;padding:20px">
+        <div style="max-width:620px;background:#fff;border-radius:8px;overflow:hidden;margin:auto">
+          <div style="background:{color};padding:16px 20px">
+            <h2 style="color:#fff;margin:0">🚨 AML ALERT: Transaction Structuring</h2>
+          </div>
+          <div style="padding:20px">
+            {_row("Account ID",            f['account_id'])}
+            {_row("Total Structured",      f"<strong>R{f['total_structured_amount']:,.2f}</strong>")}
+          </div>
+        </div></body></html>
+        """
 
     @staticmethod
     def _glitch_html_body(f: dict) -> str:
-        # (Kept identical to your previous version)
-        return ""
+        color = SEVERITY_COLORS.get(f["severity"], "#999")
+        return f"""
+        <html><body style="font-family:Arial,sans-serif;background:#f4f4f4;padding:20px">
+        <div style="max-width:620px;background:#fff;border-radius:8px;overflow:hidden;margin:auto">
+          <div style="background:{color};padding:16px 20px">
+            <h2 style="color:#fff;margin:0">⚡ GLITCH ALERT: Duplicate Virtual Card Charge</h2>
+          </div>
+          <div style="padding:20px">
+            {_row("Customer",              f['customer_name'])}
+            {_row("Merchant",              f['merchant_name'])}
+            {_row("Refund Required",       f"<strong style='color:#e53e3e'>R{f['overcharged_zar']:,.2f}</strong>")}
+          </div>
+        </div></body></html>
+        """
 
     @staticmethod
     def _summary_html_body(aml: list, glitch: list, impact: dict,
@@ -177,7 +220,7 @@ class AlertEngine:
             <strong style="color:#2b6cb0">📎 Full HTML Dashboard Attached</strong><br>
             <span style="font-size:13px;color:#4a5568">
               The complete anomaly report containing all {total} findings and direct Neo4j investigation links 
-              is attached to this email as an HTML file. Download and open the attachment in your browser to view it.
+              is attached to this email as an HTML file. Double-click the attachment below to view it in your browser.
             </span>
           </div>
 
@@ -205,7 +248,7 @@ class AlertEngine:
           </div>
         </div></body></html>
         """
-        
+
     @staticmethod
     def _clean_run_html() -> str:
         return f"""
