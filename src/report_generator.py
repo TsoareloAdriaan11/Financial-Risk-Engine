@@ -13,15 +13,24 @@ def _now() -> str:
 
 
 def _neo4j_link(cypher: str) -> str:
+    def _neo4j_link(cypher: str) -> str:
     """
     Builds a Neo4j Browser deep link that pre-fills the query editor.
     User clicks it, Neo4j Browser opens with the query ready to run.
     """
     import urllib.parse
+    
+    # 1. Grab the URI
     uri = os.environ.get("NEO4J_URI", "")
-    encoded = urllib.parse.quote(cypher)
-    # Neo4j Browser accepts a cmd parameter to pre-fill the editor
-    return f"https://browser.neo4j.io/?dbms={uri}&cmd=edit&arg={encoded}"
+    
+    # 2. Safely encode the URI so the '+' in 'neo4j+s://' becomes '%2B'
+    # This stops the browser from turning the plus sign into a blank space!
+    uri_encoded = urllib.parse.quote(uri, safe="")
+    
+    # 3. Encode the Cypher query
+    cypher_encoded = urllib.parse.quote(cypher)
+    
+    return f"https://browser.neo4j.io/?dbms={uri_encoded}&cmd=edit&arg={cypher_encoded}"
 
 
 def generate_report(aml_findings: list, glitch_findings: list,
