@@ -49,7 +49,11 @@ def main():
         report_path = ""
         total_findings = len(aml_findings) + len(glitch_findings)
         if total_findings > 0:
-            report_path = generate_report(aml_findings, glitch_findings, impact_summary, run_id)
+            report_result = generate_report(aml_findings, glitch_findings, impact_summary, run_id)
+            
+            # Extracts the file path whether the generator returns a tuple or a string
+            report_path = report_result[0] if isinstance(report_result, tuple) else report_result
+            
             logger.info("Report saved: %s", report_path)
 
         # ── 4. Alerting ────────────────────────────────────────────────────
