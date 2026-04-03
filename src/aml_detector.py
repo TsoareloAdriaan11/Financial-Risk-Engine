@@ -15,11 +15,12 @@ RING_DETECTION_QUERY = """
 MATCH (start_acc:Account)-[:SENT]->(t1:Transaction)-[:TO]->(next_acc:Account)
 WHERE t1.amount >= 1000 AND start_acc <> next_acc
 MATCH p2 = (next_acc)-[:SENT|TO*2..10]->(start_acc)
-WITH start_acc, p2, t1
+MATCH (start_acc)<-[:OWNS]-(c:Customer)
+WITH start_acc, c, p2, t1
 RETURN 
     start_acc.account_id AS ring_account,
-    start_acc.account_id AS customer_id, 
-    "Syndicate Target" AS customer_name,
+    c.customer_id AS customer_id, 
+    c.full_name AS customer_name,
     length(p2)/2 + 1 AS hops,
     reduce(total = t1.amount, n IN nodes(p2) | 
         CASE WHEN 'Transaction' IN labels(n) THEN total + n.amount ELSE total END
