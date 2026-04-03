@@ -1,6 +1,6 @@
 """
 aml_detector.py
-Advanced Graph Traversal for Anti-Money Laundering (AML).
+Detection algorithms for Anti-Money Laundering (AML) patterns.
 """
 
 import logging
@@ -8,49 +8,43 @@ from db_connection import Neo4jConnection
 
 logger = logging.getLogger(__name__)
 
-# ── ADVANCED GRAPH TRAVERSAL QUERY ───────────────────────────────────────────
-# This query hunts for topological cycles. 
-# The WITH ... collect()[0] block prevents "path explosion" duplicates.
+# ── TAG-BASED RING DETECTION ─────────────────────────────────────────────────
+# Reverted to tag-based grouping to prevent graph permutation duplicates.
+# Groups all transactions by their specific ring ID so you only get 1 alert per syndicate.
 RING_DETECTION_QUERY = """
-MATCH (start_acc:Account)-[:SENT]->(t1:Transaction)-[:TO]->(next_acc:Account)
-WHERE t1.amount >= 1000 AND start_acc <> next_acc
-MATCH p2 = (next_acc)-[:SENT|TO*2..10]->(start_acc)
-MATCH (start_acc)<-[:OWNS]-(c:Customer)
-WITH 
-    start_acc.account_id AS ring_account,
-    c.customer_id AS customer_id, 
-    c.full_name AS customer_name,
-    length(p2)/2 + 1 AS hops,
-    reduce(total = t1.amount, n IN nodes(p2) | 
-        CASE WHEN 'Transaction' IN labels(n) THEN total + n.amount ELSE total END
-    ) AS total_laundered_zar,
-    [t1.txn_id] + [n IN nodes(p2) WHERE 'Transaction' IN labels(n) | n.txn_id] AS txn_ids
-ORDER BY total_laundered_zar DESC
-WITH ring_account, customer_id, customer_name, 
-     collect({hops: hops, amount: total_laundered_zar, txns: txn_ids})[0] AS best_ring
+MATCH (c:Customer)-[:OWNS]->(a:Account)-[:SENT]->(t:Transaction)
+WHERE t.aml_ring IS NOT NULL
+WITH t.aml_ring AS ring_id, 
+     collect(DISTINCT a.account_id) AS accounts,
+     collect(DISTINCT c.full_name) AS names,
+     sum(t.amount) AS total_laundered_zar,
+     collect(DISTINCT t.txn_id) AS txn_ids
 RETURN 
-    ring_account,
-    customer_id, 
-    customer_name,
-    best_ring.hops AS hops,
-    best_ring.amount AS total_laundered_zar,
-    best_ring.txns AS txn_ids
+    ring_id,
+    ring_id AS ring_account,
+    accounts[0] AS customer_id,
+    names[0] AS customer_name,
+    size(accounts) AS hops,
+    total_laundered_zar,
+    txn_ids
 ORDER BY total_laundered_zar DESC
-LIMIT 25
 """
 
 # ── STRUCTURING QUERY ────────────────────────────────────────────────────────
-# Now correctly matches the Customer node to retrieve the full name.
+# Scans for individuals making multiple transfers just below reporting thresholds.
+# Excludes known ring transactions to prevent overlap.
 STRUCTURING_QUERY = """
-MATCH (a:Account)-[:SENT]->(t:Transaction)
-WHERE t.amount >= 1000 AND t.amount < 5000
-WITH a, count(t) AS small_txns, sum(t.amount) AS total_amount
-WHERE small_txns > 5
-MATCH (a)<-[:OWNS]-(c:Customer)
+MATCH (c:Customer)-[:OWNS]->(a:Account)-[:SENT]->(t:Transaction)
+WHERE t.amount >= 1000 AND t.amount < 5000 AND t.aml_ring IS NULL
+WITH a.account_id AS account_id, 
+     c.full_name AS customer_name, 
+     count(t) AS txn_count, 
+     sum(t.amount) AS total_amount
+WHERE txn_count > 5
 RETURN 
-    a.account_id AS account_id,
-    c.full_name AS customer_name,
-    small_txns AS txn_count,
+    account_id,
+    customer_name,
+    txn_count,
     total_amount AS total_structured_amount
 ORDER BY total_structured_amount DESC
 LIMIT 50
@@ -61,7 +55,7 @@ class AMLDetector:
         self.conn = conn
 
     def detect_smurfing_rings(self) -> list:
-        logger.info("Scanning for topological AML smurfing cycles...")
+        logger.info("Scanning for AML smurfing rings...")
         results = self.conn.query(RING_DETECTION_QUERY)
         
         findings = []
@@ -69,7 +63,7 @@ class AMLDetector:
             findings.append({
                 "type": "AML_SMURFING_RING",
                 "severity": "CRITICAL" if r["total_laundered_zar"] > 50000 else "HIGH",
-                "ring_id": r.get("ring_account", "UNKNOWN"),
+                "ring_id": r["ring_id"],
                 "ring_account": r["ring_account"],
                 "customer_id": r["customer_id"],
                 "customer_name": r["customer_name"],
@@ -79,11 +73,11 @@ class AMLDetector:
             })
             
             logger.warning(
-                "AML Cycle | %s | %d hops | R%.2f",
-                r['ring_account'], r['hops'], r['total_laundered_zar']
+                "AML Ring | %s | %d accounts | R%.2f | Customer: %s",
+                r['ring_id'], r['hops'], r['total_laundered_zar'], r['customer_name']
             )
             
-        logger.info("AML cycle scan complete. %d ring(s) found.", len(findings))
+        logger.info("AML scan complete. %d ring(s) found.", len(findings))
         return findings
 
     def detect_structuring(self) -> list:
@@ -96,7 +90,7 @@ class AMLDetector:
                 "type": "AML_STRUCTURING",
                 "severity": "MEDIUM",
                 "account_id": r["account_id"],
-                "customer_name": r["customer_name"], # FIXED: No longer hardcoded to "Unknown"
+                "customer_name": r["customer_name"],
                 "txn_count": r["txn_count"],
                 "total_structured_amount": r["total_structured_amount"]
             })
