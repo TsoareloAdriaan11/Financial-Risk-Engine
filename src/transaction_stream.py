@@ -309,17 +309,17 @@ def run_stream():
     start_time = time.time()
 
     with Neo4jConnection() as conn:
+        # ── 1. AGGRESSIVE CLEANUP ─────────────────────────────────────────
+        logger.info("🧹 Wiping previous database nodes to prevent AuraDB 200k limit crash...")
+        try:
+            # Neo4j 4.4+ Batch Deletion (Prevents Out of Memory errors on large DBs)
+            conn.query("MATCH (n) CALL { WITH n DETACH DELETE n } IN TRANSACTIONS OF 10000 ROWS")
+        except Exception as e:
+            logger.warning("Batch delete failed, attempting standard delete... (%s)", e)
+            conn.query("MATCH (n) DETACH DELETE n")
+        
+        # ── 2. REBUILD SCHEMA ─────────────────────────────────────────────
         ensure_schema(conn)
-
-        count = conn.query("MATCH (n) RETURN count(n) AS total")[0]["total"]
-        if count > 150_000:
-            logger.info("🧹 Node limit approaching (%d nodes) — purging old transactions...", count)
-            conn.query("""
-                MATCH (t:Transaction)
-                WHERE t.timestamp < (timestamp() / 1000) - 86400
-                DETACH DELETE t
-            """)
-            logger.info("✅ Old transactions purged.")
 
         logger.info("✅ Connected to Neo4j AuraDB. Stream is live.\n")
 
