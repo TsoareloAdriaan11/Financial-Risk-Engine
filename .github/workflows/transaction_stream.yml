@@ -1,4 +1,13 @@
 # .github/workflows/transaction_stream.yml
+#
+# Live Transaction Stream
+#
+# How it works:
+#   - Cron triggers every 6 hours for the full production 5h 50m run
+#   - Manual trigger lets you set a custom runtime (e.g. 120s for testing)
+#   - When the stream finishes, risk_engine.yml fires automatically
+#   - Concurrency lock prevents two streams running at the same time
+
 name: Live Transaction Stream
 
 on:
@@ -7,20 +16,19 @@ on:
   workflow_dispatch:
     inputs:
       test_runtime:
-        description: 'Test Runtime in Seconds (Leave as 21000 for full 6h run)'
+        description: 'Runtime in seconds (120 for quick test, 21000 for full 6h run)'
         required: true
         default: '21000'
 
-# Prevent two stream jobs running simultaneously
 concurrency:
   group: live-transaction-stream
-  cancel-in-progress: false    
+  cancel-in-progress: false
 
 jobs:
   stream:
     name: Continuous Transaction Stream
     runs-on: ubuntu-latest
-    timeout-minutes: 360       
+    timeout-minutes: 360
 
     steps:
       - name: Checkout repository
@@ -39,15 +47,14 @@ jobs:
 
       - name: Start live transaction stream
         env:
-          NEO4J_URI:                ${{ secrets.NEO4J_URI }}
-          NEO4J_USERNAME:           ${{ secrets.NEO4J_USERNAME }}
-          NEO4J_PASSWORD:           ${{ secrets.NEO4J_PASSWORD }}
-          STREAM_INTERVAL_SECONDS:  "15"
-          NORMAL_TXN_PER_CYCLE:     "2"
-          AML_INJECT_PROBABILITY:   "0.15"
+          NEO4J_URI:                 ${{ secrets.NEO4J_URI }}
+          NEO4J_USERNAME:            ${{ secrets.NEO4J_USERNAME }}
+          NEO4J_PASSWORD:            ${{ secrets.NEO4J_PASSWORD }}
+          STREAM_INTERVAL_SECONDS:   "15"
+          NORMAL_TXN_PER_CYCLE:      "2"
+          AML_INJECT_PROBABILITY:    "0.15"
           GLITCH_INJECT_PROBABILITY: "0.15"
-          # Uses manual input if triggered manually, otherwise defaults to 21000 (5h 50m)
-          MAX_RUNTIME_SECONDS:      ${{ github.event.inputs.test_runtime || '21000' }}
+          MAX_RUNTIME_SECONDS:       ${{ github.event.inputs.test_runtime || '21000' }}
         run: |
           cd src
           python transaction_stream.py
