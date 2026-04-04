@@ -1,26 +1,26 @@
 # .github/workflows/risk_engine.yml
 #
-# Financial Risk Engine — Autonomous CI/CD Pipeline
+# Financial Risk Engine — Detection & Alert Pipeline
 #
 # Triggers:
-#   • Scheduled: Every 6 hours (cron)
-#   • Manual: "Run workflow" button in GitHub Actions UI
+#   1. Automatically after Live Transaction Stream completes (chained)
+#   2. Manually via "Run workflow" button
+#
+# Does NOT run on a schedule — only fires when triggered by the stream
+# or manually. This prevents stale re-runs with no new data.
 
 name: Financial Risk Engine
 
 on:
-  # 1. THE CHAIN: Runs automatically the exact moment the Live Stream finishes (Perfect for your 120s test!)
+  # Runs automatically the moment the Live Transaction Stream finishes
   workflow_run:
     workflows: ["Live Transaction Stream"]
     types:
       - completed
 
-  # 2. THE OVERRIDE: Allows you to manually click "Run workflow" whenever you want
+  # Manual trigger — click "Run workflow" in GitHub Actions UI
   workflow_dispatch:
 
-  # 3. THE AUTOPILOT: Runs every hour independently to scan the live database
-  schedule:
-    - cron: "0 * * * *"
 jobs:
   run-risk-engine:
     name: Run Financial Risk Engine
@@ -55,7 +55,6 @@ jobs:
           cd src
           python main.py
 
-      # ── Upload full HTML report as downloadable artifact ─────────────────
       - name: Upload anomaly report
         if: always()
         uses: actions/upload-artifact@v4
@@ -64,7 +63,6 @@ jobs:
           path: src/risk_report_*.html
           retention-days: 90
 
-      # ── Upload logs ───────────────────────────────────────────────────────
       - name: Upload run log
         if: always()
         uses: actions/upload-artifact@v4
