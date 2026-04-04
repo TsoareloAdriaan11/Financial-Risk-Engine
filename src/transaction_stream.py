@@ -328,13 +328,14 @@ def run_stream():
         ensure_schema(conn)
       
         # ── GUARANTEE: Always inject at least 3 glitch bursts and 2 AML rings on startup
-          # This ensures the risk engine always has anomalies to detect even on short test runs
-          logger.info("💉 Seeding guaranteed anomalies for detection baseline...")
-          for _ in range(3):
-              emit_glitch_burst(conn)
-          for _ in range(2):
-              emit_aml_burst(conn)
-          logger.info("✅ Baseline anomalies seeded.")
+        # This ensures the risk engine always has anomalies to detect even on short test runs
+        logger.info("💉 Seeding guaranteed anomalies for detection baseline...")
+        for _ in range(3):
+            emit_glitch_burst(conn)
+        for _ in range(2):
+            emit_aml_burst(conn)
+        logger.info("✅ Baseline anomalies seeded.")
+
         while _running:
             elapsed = time.time() - start_time
             if elapsed >= MAX_RUNTIME_SECONDS:
