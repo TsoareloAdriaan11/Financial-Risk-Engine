@@ -232,7 +232,7 @@ def emit_glitch_burst(conn: Neo4jConnection) -> int:
 
     for txn_id, ts, is_dup in [
         (f"TXN-ORIG-LIVE-{fake.uuid4()[:8].upper()}", base_time, False),
-        (f"TXN-DUP-LIVE-{fake.uuid4()[:8].upper()}",  dup_time,  True),
+        (f"TXN-ZDUP-LIVE-{fake.uuid4()[:8].upper()}", dup_time,  True),
     ]:
         conn.query(
             """
