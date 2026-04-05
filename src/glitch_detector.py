@@ -15,23 +15,24 @@ DUPLICATE_CHARGE_QUERY = """
 MATCH (a:Account {account_type: 'virtual'})-[:SENT]->(t1:Transaction)-[:TO]->(m1:Merchant)
 WHERE t1.channel = 'virtual_card'
 MATCH (a)-[:SENT]->(t2:Transaction)-[:TO]->(m2:Merchant)
-WHERE t1.txn_id < t2.txn_id
-  AND t2.channel = 'virtual_card'
+WHERE t2.channel = 'virtual_card'
+  AND t1.txn_id <> t2.txn_id
   AND m1.name = m2.name
-  AND t2.timestamp >= t1.timestamp
-  AND t2.timestamp <= t1.timestamp + $window_seconds
   AND abs(t1.amount - t2.amount) < 0.01
+  AND abs(t1.timestamp - t2.timestamp) > 0
+  AND abs(t1.timestamp - t2.timestamp) <= $window_seconds
+  AND t1.timestamp < t2.timestamp
 MATCH (a)<-[:OWNS]-(c:Customer)
 RETURN
-    c.customer_id          AS customer_id,
-    c.full_name            AS customer_name,
-    a.account_id           AS account_id,
-    m1.name                AS merchant_name,
-    t1.txn_id              AS original_txn_id,
-    t2.txn_id              AS duplicate_txn_id,
-    t1.amount              AS overcharged_zar,
-    (t2.timestamp - t1.timestamp) AS seconds_between_charges
-ORDER BY t1.timestamp DESC
+    c.customer_id                     AS customer_id,
+    c.full_name                       AS customer_name,
+    a.account_id                      AS account_id,
+    m1.name                           AS merchant_name,
+    t1.txn_id                         AS original_txn_id,
+    t2.txn_id                         AS duplicate_txn_id,
+    t1.amount                         AS overcharged_zar,
+    (t2.timestamp - t1.timestamp)     AS seconds_between_charges
+ORDER BY t1.amount DESC
 """
 
 class GlitchDetector:
