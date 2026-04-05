@@ -64,9 +64,18 @@ def main():
             alert.send_clean_run()
         else:
             logger.info("📦 Packaging findings into master digest report...")
-            # Send ONLY the master summary digest AND attach the HTML file
+
+            # Split AML findings into rings and structuring separately
+            # so both types always appear in the email summary regardless
+            # of how many rings there are
+            rings      = [f for f in aml_findings if f.get("type") == "AML_SMURFING_RING"]
+            structuring = [f for f in aml_findings if f.get("type") == "AML_STRUCTURING"]
+
+            # Take top 25 of each type, then recombine for the email
+            aml_for_email = rings[:25] + structuring[:25]
+
             alert.send_run_summary(
-                aml_findings[:50],
+                aml_for_email,
                 glitch_findings[:50],
                 impact_summary,
                 total_aml=len(aml_findings),
