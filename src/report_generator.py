@@ -45,54 +45,39 @@ def generate_report(aml_findings: list, glitch_findings: list,
     aml_exposure  = sum(f.get("total_laundered_zar", f.get("total_structured_amount", 0)) for f in aml_findings)
     glitch_refunds = sum(f.get("overcharged_zar", 0) for f in glitch_findings)
 
-    # ── AML rows ────────────────────────────────────────────────────────────
-    aml_rows_html = ""
-    for i, f in enumerate(aml_findings, 1):
-        ftype     = f.get("type", "")
-        severity  = f.get("severity", "MEDIUM")
-        name      = f.get("customer_name", f.get("account_id", "Unknown"))
-        amount    = f.get("total_laundered_zar", f.get("total_structured_amount", 0))
-        txn_ids   = f.get("txn_ids", [])
+    # ── AML rows: rings and structuring in separate lists ───────────────────
+    ring_rows_html = ""
+    struct_rows_html = ""
 
+    rings_only = [f for f in aml_findings if f.get("type") == "AML_SMURFING_RING"]
+    structs_only = [f for f in aml_findings if f.get("type") == "AML_STRUCTURING"]
+
+    for i, f in enumerate(rings_only, 1):
+        severity  = f.get("severity", "HIGH")
+        name      = f.get("customer_name", "Unknown")
+        amount    = f.get("total_laundered_zar", 0)
+        txn_ids   = f.get("txn_ids", [])
+        ring_id   = f.get("ring_id", "")
+        hops      = str(f.get("hops", len(txn_ids)))
         sev_color = {"CRITICAL": "#e53e3e", "HIGH": "#dd6b20",
                      "MEDIUM": "#d69e2e", "LOW": "#38a169"}.get(severity, "#718096")
-
-        if ftype == "AML_SMURFING_RING":
-            ring_id    = f.get("ring_id", "")
-            hops_label = str(f.get("hops", len(txn_ids)))
-            id_label   = ring_id
-            type_label = "Smurfing Ring"
-            # Returns only Customer nodes with SENT_TO virtual relationships
-            # Account and Transaction details appear as properties when clicking a node
-            cypher = (
-                f"MATCH (c1:Customer)-[:OWNS]->(a:Account)-[:SENT]->(t:Transaction"
-                f" {{aml_ring: '{ring_id}'}})-[:TO]->(b:Account)<-[:OWNS]-(c2:Customer)"
-                f" WITH c1, c2, sum(t.amount) AS transferred, collect(t.txn_id) AS txns,"
-                f" collect(a.account_id) AS from_accts"
-                f" MERGE (c1)-[r:TRANSFERRED_TO {{ring: '{ring_id}'}}]->(c2)"
-                f" SET r.amount = transferred, r.txn_ids = txns, r.from_accounts = from_accts"
-                f" RETURN c1, r, c2"
-            )
-            
-        else:
-            # Structuring
-            acct       = f.get("account_id", "")
-            txn_count  = f.get("txn_count", f.get("suspicious_txn_count", len(txn_ids)))
-            hops_label = str(txn_count) + " txns"
-            id_label   = acct
-            type_label = "Structuring"
-            cypher     = f"MATCH path = (a:Account {{account_id: '{acct}'}})-[:SENT]->(t:Transaction) WHERE t.amount >= 1000 AND t.amount < 5000 RETURN path LIMIT 50"
-
+        cypher = (
+            f"MATCH (c1:Customer)-[:OWNS]->(a:Account)-[:SENT]->(t:Transaction"
+            f" {{aml_ring: '{ring_id}'}})-[:TO]->(b:Account)<-[:OWNS]-(c2:Customer)"
+            f" WITH c1, c2, sum(t.amount) AS transferred, collect(t.txn_id) AS txns,"
+            f" collect(a.account_id) AS from_accts"
+            f" MERGE (c1)-[r:TRANSFERRED_TO {{ring: '{ring_id}'}}]->(c2)"
+            f" SET r.amount = transferred, r.txn_ids = txns, r.from_accounts = from_accts"
+            f" RETURN c1, r, c2"
+        )
         neo4j_url = _neo4j_link(cypher)
         txn_list  = "<br>".join(txn_ids[:5]) + ("..." if len(txn_ids) > 5 else "")
-
-        aml_rows_html += f"""
+        ring_rows_html += f"""
         <tr>
             <td style="padding:10px;border-bottom:1px solid #e2e8f0;color:#718096;font-size:12px">{i}</td>
             <td style="padding:10px;border-bottom:1px solid #e2e8f0"><strong>{name}</strong></td>
-            <td style="padding:10px;border-bottom:1px solid #e2e8f0;font-size:12px;color:#4a5568">{type_label}</td>
-            <td style="padding:10px;border-bottom:1px solid #e2e8f0;font-family:monospace;font-size:11px;color:#2b6cb0">{id_label}</td>
-            <td style="padding:10px;border-bottom:1px solid #e2e8f0;text-align:center">{hops_label}</td>
+            <td style="padding:10px;border-bottom:1px solid #e2e8f0;font-family:monospace;font-size:11px;color:#2b6cb0">{ring_id}</td>
+            <td style="padding:10px;border-bottom:1px solid #e2e8f0;text-align:center">{hops} accounts</td>
             <td style="padding:10px;border-bottom:1px solid #e2e8f0;font-weight:bold">R{amount:,.2f}</td>
             <td style="padding:10px;border-bottom:1px solid #e2e8f0">
                 <span style="background:{sev_color};color:#fff;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:bold">{severity}</span>
@@ -105,6 +90,43 @@ def generate_report(aml_findings: list, glitch_findings: list,
                 </a>
             </td>
         </tr>"""
+
+    for i, f in enumerate(structs_only, 1):
+        severity  = f.get("severity", "MEDIUM")
+        name      = f.get("customer_name", "Unknown")
+        acct      = f.get("account_id", "")
+        amount    = f.get("total_structured_amount", 0)
+        txn_count = f.get("txn_count", 0)
+        sev_color = {"CRITICAL": "#e53e3e", "HIGH": "#dd6b20",
+                     "MEDIUM": "#d69e2e", "LOW": "#38a169"}.get(severity, "#718096")
+        # Show Customer node — account_id appears as property when clicked
+        cypher = (
+            f"MATCH (c:Customer)-[:OWNS]->(a:Account {{account_id: '{acct}'}})-[:SENT]->(t:Transaction)"
+            f" WHERE t.amount >= 1000 AND t.amount < 5000 AND t.aml_ring IS NULL"
+            f" RETURN c, a, t LIMIT 50"
+        )
+        neo4j_url = _neo4j_link(cypher)
+        struct_rows_html += f"""
+        <tr>
+            <td style="padding:10px;border-bottom:1px solid #e2e8f0;color:#718096;font-size:12px">{i}</td>
+            <td style="padding:10px;border-bottom:1px solid #e2e8f0"><strong>{name}</strong></td>
+            <td style="padding:10px;border-bottom:1px solid #e2e8f0;font-family:monospace;font-size:11px;color:#2b6cb0">{acct}</td>
+            <td style="padding:10px;border-bottom:1px solid #e2e8f0;text-align:center">{txn_count} txns</td>
+            <td style="padding:10px;border-bottom:1px solid #e2e8f0;font-weight:bold">R{amount:,.2f}</td>
+            <td style="padding:10px;border-bottom:1px solid #e2e8f0">
+                <span style="background:{sev_color};color:#fff;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:bold">{severity}</span>
+            </td>
+            <td style="padding:10px;border-bottom:1px solid #e2e8f0">
+                <a href="{neo4j_url}" target="_blank"
+                   style="background:#2b6cb0;color:#fff;padding:4px 10px;border-radius:4px;text-decoration:none;font-size:11px;white-space:nowrap">
+                   🔍 View in Neo4j
+                </a>
+            </td>
+        </tr>"""
+
+    total_rings   = len(rings_only)
+    total_structs = len(structs_only)
+    aml_rows_html = ""  # kept for compatibility
 
     # ── Glitch rows ──────────────────────────────────────────────────────────
     glitch_rows_html = ""
@@ -121,7 +143,13 @@ def generate_report(aml_findings: list, glitch_findings: list,
         sev_color = {"CRITICAL": "#e53e3e", "HIGH": "#dd6b20",
                      "MEDIUM": "#d69e2e", "LOW": "#38a169"}.get(severity, "#718096")
 
-        cypher    = f"MATCH path = (a:Account {{account_id: '{acct}'}})-[:SENT]->(t:Transaction)-[:TO]->(m:Merchant {{name: '{merchant}'}}) WHERE t.channel = 'virtual_card' RETURN path"
+        # Show Customer node — account/txn details appear as properties when clicked
+        cypher = (
+            f"MATCH (c:Customer)-[:OWNS]->(a:Account {{account_id: '{acct}'}})"
+            f"-[:SENT]->(t:Transaction)-[:TO]->(m:Merchant {{name: '{merchant}'}})"
+            f" WHERE t.channel = 'virtual_card'"
+            f" RETURN c, a, t, m"
+        )
         neo4j_url = _neo4j_link(cypher)
         safe_cypher = html.escape(cypher)
 
@@ -215,16 +243,15 @@ def generate_report(aml_findings: list, glitch_findings: list,
 </div>
 
 <div class="section">
-  <h2>🚨 AML Findings — All {total_aml} Anomalies</h2>
-  <p class="subtitle">Smurfing rings and structuring patterns. Click "Auto-Copy & View" to investigate the graph.</p>
+  <h2>🔴 Smurfing Rings — {total_rings} Detected</h2>
+  <p class="subtitle">Closed-loop money laundering rings. Each transfer is below R5,000 to avoid FICA reporting thresholds. Click "View in Neo4j" to see the ring graph — nodes show customer names, click any node to see account details.</p>
   <table>
     <thead>
       <tr>
         <th>#</th>
         <th>Customer</th>
-        <th>Type</th>
-        <th>Ring / Account ID</th>
-        <th>Ring Size / Txns</th>
+        <th>Ring ID</th>
+        <th>Ring Size</th>
         <th>Amount</th>
         <th>Severity</th>
         <th>Transaction IDs</th>
@@ -232,7 +259,28 @@ def generate_report(aml_findings: list, glitch_findings: list,
       </tr>
     </thead>
     <tbody>
-      {aml_rows_html if aml_rows_html else "<tr><td colspan='9' style='padding:20px;text-align:center;color:#718096'>No AML findings</td></tr>"}
+      {ring_rows_html if ring_rows_html else "<tr><td colspan='8' style='padding:20px;text-align:center;color:#718096'>No smurfing rings detected</td></tr>"}
+    </tbody>
+  </table>
+</div>
+
+<div class="section">
+  <h2>🟡 Transaction Structuring — {total_structs} Detected</h2>
+  <p class="subtitle">Single accounts making many sub-R5,000 transfers to stay below FICA thresholds. Click "View in Neo4j" to see the customer and their suspicious transactions.</p>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Customer</th>
+        <th>Account ID</th>
+        <th>Txn Count</th>
+        <th>Total Amount</th>
+        <th>Severity</th>
+        <th>Investigate</th>
+      </tr>
+    </thead>
+    <tbody>
+      {struct_rows_html if struct_rows_html else "<tr><td colspan='7' style='padding:20px;text-align:center;color:#718096'>No structuring detected</td></tr>"}
     </tbody>
   </table>
 </div>
