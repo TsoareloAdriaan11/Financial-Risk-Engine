@@ -45,22 +45,23 @@ def generate_report(aml_findings: list, glitch_findings: list,
     aml_exposure  = sum(f.get("total_laundered_zar", f.get("total_structured_amount", 0)) for f in aml_findings)
     glitch_refunds = sum(f.get("overcharged_zar", 0) for f in glitch_findings)
 
-    # ── AML rows: rings and structuring in separate lists ───────────────────
-    ring_rows_html = ""
-    struct_rows_html = ""
-
-    rings_only = [f for f in aml_findings if f.get("type") == "AML_SMURFING_RING"]
+    # ── AML rows: RINGS ────────────────────────────────────────────────────
+    rings_only   = [f for f in aml_findings if f.get("type") == "AML_SMURFING_RING"]
     structs_only = [f for f in aml_findings if f.get("type") == "AML_STRUCTURING"]
+    total_rings   = len(rings_only)
+    total_structs = len(structs_only)
 
+    ring_rows_html = ""
     for i, f in enumerate(rings_only, 1):
-        severity  = f.get("severity", "HIGH")
-        name      = f.get("customer_name", "Unknown")
-        amount    = f.get("total_laundered_zar", 0)
-        txn_ids   = f.get("txn_ids", [])
-        ring_id   = f.get("ring_id", "")
-        hops      = str(f.get("hops", len(txn_ids)))
+        severity = f.get("severity", "HIGH")
+        name     = f.get("customer_name", "Unknown")
+        amount   = f.get("total_laundered_zar", 0)
+        txn_ids  = f.get("txn_ids", [])
+        ring_id  = f.get("ring_id", "")
+        hops     = str(f.get("hops", len(txn_ids)))
         sev_color = {"CRITICAL": "#e53e3e", "HIGH": "#dd6b20",
                      "MEDIUM": "#d69e2e", "LOW": "#38a169"}.get(severity, "#718096")
+        # Only return Customer nodes — account/txn details appear as click attributes
         cypher = (
             f"MATCH (c1:Customer)-[:OWNS]->(a:Account)-[:SENT]->(t:Transaction"
             f" {{aml_ring: '{ring_id}'}})-[:TO]->(b:Account)<-[:OWNS]-(c2:Customer)"
@@ -91,6 +92,8 @@ def generate_report(aml_findings: list, glitch_findings: list,
             </td>
         </tr>"""
 
+    # ── AML rows: STRUCTURING ────────────────────────────────────────────────
+    struct_rows_html = ""
     for i, f in enumerate(structs_only, 1):
         severity  = f.get("severity", "MEDIUM")
         name      = f.get("customer_name", "Unknown")
@@ -99,9 +102,11 @@ def generate_report(aml_findings: list, glitch_findings: list,
         txn_count = f.get("txn_count", 0)
         sev_color = {"CRITICAL": "#e53e3e", "HIGH": "#dd6b20",
                      "MEDIUM": "#d69e2e", "LOW": "#38a169"}.get(severity, "#718096")
-        # Show Customer node — account_id appears as property when clicked
+        # Show Customer → Account → Transactions with lines showing money flow
+        # Account appears as attribute when clicking customer node
         cypher = (
-            f"MATCH (c:Customer)-[:OWNS]->(a:Account {{account_id: '{acct}'}})-[:SENT]->(t:Transaction)"
+            f"MATCH (c:Customer)-[:OWNS]->(a:Account {{account_id: '{acct}'}})"
+            f"-[:SENT]->(t:Transaction)"
             f" WHERE t.amount >= 1000 AND t.amount < 5000 AND t.aml_ring IS NULL"
             f" RETURN c, a, t LIMIT 50"
         )
@@ -124,10 +129,6 @@ def generate_report(aml_findings: list, glitch_findings: list,
             </td>
         </tr>"""
 
-    total_rings   = len(rings_only)
-    total_structs = len(structs_only)
-    aml_rows_html = ""  # kept for compatibility
-
     # ── Glitch rows ──────────────────────────────────────────────────────────
     glitch_rows_html = ""
     for i, f in enumerate(glitch_findings, 1):
@@ -143,12 +144,14 @@ def generate_report(aml_findings: list, glitch_findings: list,
         sev_color = {"CRITICAL": "#e53e3e", "HIGH": "#dd6b20",
                      "MEDIUM": "#d69e2e", "LOW": "#38a169"}.get(severity, "#718096")
 
-        # Show Customer node — account/txn details appear as properties when clicked
+        # Return Customer as primary node — account appears as click attribute
+        # RETURN path ensures arrows show how money travelled
         cypher = (
             f"MATCH (c:Customer)-[:OWNS]->(a:Account {{account_id: '{acct}'}})"
             f"-[:SENT]->(t:Transaction)-[:TO]->(m:Merchant {{name: '{merchant}'}})"
-            f" WHERE t.channel = 'virtual_card'"
-            f" RETURN c, a, t, m"
+            f" WHERE t.channel = \'virtual_card\'"
+            f" WITH c, collect(a) AS accts, collect(t) AS txns, m"
+            f" RETURN c, accts, txns, m"
         )
         neo4j_url = _neo4j_link(cypher)
         safe_cypher = html.escape(cypher)
@@ -244,7 +247,7 @@ def generate_report(aml_findings: list, glitch_findings: list,
 
 <div class="section">
   <h2>🔴 Smurfing Rings — {total_rings} Detected</h2>
-  <p class="subtitle">Closed-loop money laundering rings. Each transfer is below R5,000 to avoid FICA reporting thresholds. Click "View in Neo4j" to see the ring graph — nodes show customer names, click any node to see account details.</p>
+  <p class="subtitle">Closed-loop money laundering rings. Each transfer is below R5,000 to avoid FICA reporting thresholds. Click "View in Neo4j" to see customer-name nodes — click any node to view account details.</p>
   <table>
     <thead>
       <tr>
@@ -266,7 +269,7 @@ def generate_report(aml_findings: list, glitch_findings: list,
 
 <div class="section">
   <h2>🟡 Transaction Structuring — {total_structs} Detected</h2>
-  <p class="subtitle">Single accounts making many sub-R5,000 transfers to stay below FICA thresholds. Click "View in Neo4j" to see the customer and their suspicious transactions.</p>
+  <p class="subtitle">Single accounts making many sub-R5,000 transfers to stay below FICA thresholds. Click "View in Neo4j" to see how money flowed — customer name is the primary node, click it to see account details.</p>
   <table>
     <thead>
       <tr>
