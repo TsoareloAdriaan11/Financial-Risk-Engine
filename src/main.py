@@ -79,7 +79,8 @@ def main():
             total_rings_count   = sum(1 for f in aml_findings if f.get("type") == "AML_SMURFING_RING")
             total_structs_count = sum(1 for f in aml_findings if f.get("type") == "AML_STRUCTURING")
             full_glitch_refunds = sum(f.get("overcharged_zar", 0) for f in glitch_findings)
-
+            full_aml_exposure = sum(f.get("total_laundered_zar", f.get("total_structured_amount", 0)) for f in aml_findings)
+            
             alert.send_run_summary(
                 aml_for_email,
                 glitch_findings[:50],
@@ -91,6 +92,7 @@ def main():
                 total_rings=total_rings_count,
                 total_structs=total_structs_count,
                 total_glitch_refunds=full_glitch_refunds,
+                total_aml_exposure=full_aml_exposure,
             )
 
         # ── Summary log ────────────────────────────────────────────────────
