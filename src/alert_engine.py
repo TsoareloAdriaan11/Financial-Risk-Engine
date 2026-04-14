@@ -49,17 +49,21 @@ class AlertEngine:
 
     def send_run_summary(self, aml_findings: list, glitch_findings: list,
                          impact_summary: dict, total_aml: int = 0,
-                         total_glitch: int = 0, run_id: str = "", report_path: str = None):
-        """Send an end-of-run digest with top 50 of each + attached full HTML report."""
-        
+                         total_glitch: int = 0, run_id: str = "",
+                         report_path: str = None,
+                         total_rings: int = 0, total_structs: int = 0,
+                         total_glitch_refunds: float = 0.0):
+        """Send an end-of-run digest with top 25 rings + top 25 structs + top 50 glitch."""
         total_aml    = total_aml    or len(aml_findings)
         total_glitch = total_glitch or len(glitch_findings)
         total        = total_aml + total_glitch
         subject = f"[RISK ENGINE] Scan Complete — {total} Finding(s) | {_now()}"
-        
         body    = self._summary_html_body(
             aml_findings, glitch_findings, impact_summary,
-            total_aml, total_glitch, run_id
+            total_aml, total_glitch, run_id,
+            total_rings=total_rings,
+            total_structs=total_structs,
+            total_glitch_refunds=total_glitch_refunds,
         )
         self._send(subject, body, attachment_path=report_path)
 
@@ -170,12 +174,20 @@ class AlertEngine:
     @staticmethod
     def _summary_html_body(aml: list, glitch: list, impact: dict,
                            total_aml: int = 0, total_glitch: int = 0,
-                           run_id: str = "") -> str:
+                           run_id: str = "",
+                           total_rings: int = 0, total_structs: int = 0,
+                           total_glitch_refunds: float = 0.0) -> str:
         total_aml    = total_aml    or len(aml)
         total_glitch = total_glitch or len(glitch)
         total = total_aml + total_glitch
         total_aml_amount    = sum(f.get("total_laundered_zar", f.get("total_structured_amount", 0)) for f in aml)
-        total_glitch_amount = sum(f.get("overcharged_zar", 0) for f in glitch)
+        # Issue 4: use total_glitch_refunds (sum of ALL glitch findings) not just the 50 in email
+        total_glitch_amount = total_glitch_refunds if total_glitch_refunds > 0 else sum(f.get("overcharged_zar", 0) for f in glitch)
+        # Compute ring/struct counts from what was passed if not provided
+        rings_in_email   = [f for f in aml if f.get("type") == "AML_SMURFING_RING"]
+        structs_in_email = [f for f in aml if f.get("type") == "AML_STRUCTURING"]
+        total_rings   = total_rings   or len(rings_in_email)
+        total_structs = total_structs or len(structs_in_email)
 
         ring_rows = ""
         struct_rows = ""
@@ -242,7 +254,7 @@ class AlertEngine:
           </div>
 
           <div style="padding:0 20px 20px">
-            <h3 style="margin-top:16px">🔴 Smurfing Rings (Showing top {len([f for f in aml if f.get('type')=='AML_SMURFING_RING'])} of {sum(1 for f in aml if f.get('type')=='AML_SMURFING_RING')} detected)</h3>
+            <h3 style="margin-top:16px">🔴 Smurfing Rings (Showing top {len(rings_in_email)} of {total_rings} detected)</h3>
             <table width="100%" style="border-collapse:collapse;font-size:13px;margin-bottom:16px">
               <tr style="background:#f7fafc">
                 <th style="padding:8px 10px;text-align:left">Customer</th>
@@ -252,7 +264,7 @@ class AlertEngine:
               </tr>
               {ring_rows}
             </table>
-            <h3 style="margin-top:16px">🟡 Structuring Patterns (Showing top {len([f for f in aml if f.get('type')=='AML_STRUCTURING'])} detected)</h3>
+            <h3 style="margin-top:16px">🟡 Structuring Patterns (Showing top {len(structs_in_email)} of {total_structs} detected)</h3>
             <table width="100%" style="border-collapse:collapse;font-size:13px;margin-bottom:16px">
               <tr style="background:#f7fafc">
                 <th style="padding:8px 10px;text-align:left">Customer</th>
