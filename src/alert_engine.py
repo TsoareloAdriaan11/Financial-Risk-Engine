@@ -177,7 +177,6 @@ class AlertEngine:
         </div></body></html>
         """
 
-    
     def _summary_html_body(self, aml: list, glitch: list, impact: dict,
                            total_aml: int = 0, total_glitch: int = 0,
                            run_id: str = "",
