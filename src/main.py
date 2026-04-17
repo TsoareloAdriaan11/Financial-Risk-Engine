@@ -74,13 +74,12 @@ def main():
             # Take top 25 of each type, then recombine for the email
             aml_for_email = rings[:25] + structuring[:25]
 
-            # Pass total counts of each subtype so email shows correct "X of Y" labels
-            # Pass full glitch refund sum so stat card matches the report
+            # Compute full totals so email stat cards match the HTML report exactly
             total_rings_count   = sum(1 for f in aml_findings if f.get("type") == "AML_SMURFING_RING")
             total_structs_count = sum(1 for f in aml_findings if f.get("type") == "AML_STRUCTURING")
             full_glitch_refunds = sum(f.get("overcharged_zar", 0) for f in glitch_findings)
-            full_aml_exposure = sum(f.get("total_laundered_zar", f.get("total_structured_amount", 0)) for f in aml_findings)
-            
+            full_aml_exposure   = sum(f.get("total_laundered_zar", f.get("total_structured_amount", 0)) for f in aml_findings)
+
             alert.send_run_summary(
                 aml_for_email,
                 glitch_findings[:50],
