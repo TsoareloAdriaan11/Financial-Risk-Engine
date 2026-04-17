@@ -60,8 +60,12 @@ class AlertEngine:
         total        = total_aml + total_glitch
         subject = f"[RISK ENGINE] Scan Complete — {total} Finding(s) | {_now()}"
         body    = self._summary_html_body(
-            aml_findings, glitch_findings, impact_summary,
-            total_aml, total_glitch, run_id,
+            aml = aml_findings, 
+            glitch = glitch_findings, 
+            impact = impact_summary,
+            total_aml = total_aml, 
+            total_glitch = total_glitch, 
+            run_id = run_id,
             total_rings=total_rings,
             total_structs=total_structs,
             total_glitch_refunds=total_glitch_refunds,
