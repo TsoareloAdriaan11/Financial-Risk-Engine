@@ -52,8 +52,9 @@ class AlertEngine:
                          total_glitch: int = 0, run_id: str = "",
                          report_path: str = None,
                          total_rings: int = 0, total_structs: int = 0,
-                         total_glitch_refunds: float = 0.0):
-        """Send an end-of-run digest with top 25 rings + top 25 structs + top 50 glitch."""
+                         total_glitch_refunds: float = 0.0,
+                         total_aml_exposure: float = 0.0):
+        """Send an end-of-run digest — all totals passed from main so email matches report."""
         total_aml    = total_aml    or len(aml_findings)
         total_glitch = total_glitch or len(glitch_findings)
         total        = total_aml + total_glitch
@@ -64,6 +65,7 @@ class AlertEngine:
             total_rings=total_rings,
             total_structs=total_structs,
             total_glitch_refunds=total_glitch_refunds,
+            total_aml_exposure=total_aml_exposure,
         )
         self._send(subject, body, attachment_path=report_path)
 
@@ -176,14 +178,15 @@ class AlertEngine:
                            total_aml: int = 0, total_glitch: int = 0,
                            run_id: str = "",
                            total_rings: int = 0, total_structs: int = 0,
-                           total_glitch_refunds: float = 0.0) -> str:
+                           total_glitch_refunds: float = 0.0,
+                           total_aml_exposure: float = 0.0) -> str:
         total_aml    = total_aml    or len(aml)
         total_glitch = total_glitch or len(glitch)
         total = total_aml + total_glitch
-        total_aml_amount    = sum(f.get("total_laundered_zar", f.get("total_structured_amount", 0)) for f in aml)
-        # Issue 4: use total_glitch_refunds (sum of ALL glitch findings) not just the 50 in email
+        # Use full totals from main.py so email stat cards match the HTML report exactly
+        total_aml_amount    = total_aml_exposure   if total_aml_exposure   > 0 else sum(f.get("total_laundered_zar", f.get("total_structured_amount", 0)) for f in aml)
         total_glitch_amount = total_glitch_refunds if total_glitch_refunds > 0 else sum(f.get("overcharged_zar", 0) for f in glitch)
-        # Compute ring/struct counts from what was passed if not provided
+        # Counts for "Showing top X of Y" headings
         rings_in_email   = [f for f in aml if f.get("type") == "AML_SMURFING_RING"]
         structs_in_email = [f for f in aml if f.get("type") == "AML_STRUCTURING"]
         total_rings   = total_rings   or len(rings_in_email)
