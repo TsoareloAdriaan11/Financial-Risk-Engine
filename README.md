@@ -29,7 +29,7 @@ Detects closed-loop, circular money transfers used to bypass FICA reporting thre
 ### 3. AML Structuring Detection
 Detects individuals making rapid, multiple transfers just below the R5,000 FICA reporting threshold to avoid raising automated bank flags.
 * **Evidence:** See the graph mapping below of high-frequency, low-value outgoing transactions designed to evade detection.
-![AML Structuring Visualisation](./structruring_visualisation.jpg)
+![AML Structuring Visualisation](./structruring_visualisation.png)
 
 ### 4. Payment Gateway Glitch Detection (The FNB / Takealot Incident)
 Mathematically replicates a real-world South African banking incident: the well-documented FNB (First National Bank) virtual card glitch. During this incident, the bank's gateway erroneously fired duplicate and triplicate charges against merchants like Takealot due to retry-logic errors.
