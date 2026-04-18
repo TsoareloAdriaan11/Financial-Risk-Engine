@@ -58,7 +58,7 @@ The project is heavily modularized for clean execution within the CI/CD pipeline
 | `alert_engine.py` | Handles real-time email alerting via Gmail SMTP. Dynamically maps variables and generates severity-color-coded HTML stat cards. |
 | `report_generator.py` | Builds the highly-detailed HTML dashboard. Embeds precise Cypher queries required to redraw the anomaly in Neo4j seamlessly. |
 | `db_connection.py` | Manages the Neo4j AuraDB persistent connection. Implements automatic retry logic for dropped idle connections. |
-| `data_generator.py` | Uses the Python `Faker` library (with `en_ZA` locales) to generate realistic South African KYC profiles, virtual accounts, and timestamps. |
+| `data_generator.py` | Uses the Python `Faker` library to generate realistic KYC profiles, virtual accounts, and timestamps. |
 
 ---
 
