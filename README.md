@@ -97,4 +97,4 @@ The microservice runs autonomously in the cloud and requires the following GitHu
 
 *Built for demonstrating commercial awareness of South African FinTech risk scenarios — FICA compliance, FSCA incident response, and real-time graph-based anomaly detection.*
 
-**The use of AI is acknowledged for this project.**
+**The use of AI is acknowledged in making this project successful.**
