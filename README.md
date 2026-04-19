@@ -1,5 +1,5 @@
 # 🏦 Financial Risk Engine: Autonomous Graph-Based Fraud Detection
-### Neo4j AuraDB · GitHub Actions · Python · AI · South African Banking Context
+### Neo4j AuraDB · GitHub Actions · Python · HTML· AI · South African Banking Context
 
 ---
 
