@@ -193,7 +193,7 @@ Each finding in the HTML report includes a **"View in Neo4j"** button that opens
 The ring visualization shows only **Customer name nodes** connected by `TRANSFERRED_TO` relationships. Clicking any customer node reveals their account ID, bank, balance, and transaction history as properties in the side panel. The closed pentagon shape is the visual signature of a smurfing ring — money circulating through 5 people and returning to the origin.
 
 > *Live visualization: 5-person ring — Kelly Robinson → Ricky Walker → Erin Clay → Keith Barnes → Robert Massey → Kelly Robinson*
-ring_visualisation.png
+![AML Ring Visualisation](./ring_visualisation.png)
 ---
 
 ### Transaction Structuring — Single Account, Many Transfers
@@ -201,7 +201,7 @@ ring_visualisation.png
 The structuring visualization shows a single **Customer node** radiating outward to dozens of individual transaction amounts via their Account node. The star pattern — one source, many small outbound amounts — is the visual signature of structuring behaviour. The amounts shown (R337, R664, R696, R803 etc.) are all deliberately below the R5,000 FICA threshold.
 
 > *Live visualization: Account ACC-1C14221E — 50+ sub-R5,000 transactions fanning outward*
-
+![AML Structuring Visualisation](./structruring_visualisation.png)
 ---
 
 ### Payment Glitch — Duplicate Charge
@@ -209,7 +209,7 @@ The structuring visualization shows a single **Customer node** radiating outward
 The glitch visualization shows the exact path of a duplicate charge: **Customer → Account → two identical Transaction nodes → Takealot**. Both transaction nodes carry the same amount (R3,488.84) pointing to the same merchant, confirming the duplicate. The customer name node is the primary visual anchor — clicking it reveals the account number as an attribute.
 
 > *Live visualization: Lisa Jones → ACC-9FF37799 → R3,488.84 (×2) → Takealot*
-
+![Payment Glitch Visualisation](./glitch_visualization.png)
 ---
 
 ## Source Files — What Each Does
