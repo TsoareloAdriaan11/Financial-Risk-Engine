@@ -192,7 +192,7 @@ Each finding in the HTML report includes a **"View in Neo4j"** button that opens
 
 The ring visualization shows only **Customer name nodes** connected by `TRANSFERRED_TO` relationships. Clicking any customer node reveals their account ID, bank, balance, and transaction history as properties in the side panel. The closed pentagon shape is the visual signature of a smurfing ring — money circulating through 5 people and returning to the origin.
 
-> *Live visualization: 5-person ring — Kelly Robinson → Ricky Walker → Erin Clay → Keith Barnes → Robert Massey → Kelly Robinson*
+> *Live visualization: 5-person ring — Kelly Robinson → Robert Massey → Keith Barnes → Erin Clay → Ricky Walker → Kelly Robinson*
 ![AML Ring Visualisation](./ring_visualisation.png)
 ---
 
